@@ -1,0 +1,89 @@
+交易所的深度行情处理 
+
+交易所提供 5 档的深度行情，比如下面
+   股票代码 600000   (浦发银行)
+
+   卖5价  9.86(price)   1500(size)
+   卖4价  9.85(price)   1800(size)
+   卖3价  9.83(price)   2900(size)
+   卖2价  9.82(price)   1300(size)
+   卖1价  9.79(price)   200 (size)
+
+   买1价  9.78(price)   100 (size)
+   买2价  9.77(price)   2200 (size)
+   买3价  9.76(price)   3900 (size)
+   买4价  9.75(price)   12300 (size)
+   买5价  9.72(price)   10000 (size)
+   
+交易所发布行情是使用二进制协议，
+   - 小字节序 (little endian)
+   - 3种协议包，均没有padding (!! 网络紧凑格式，没有数据结构以外的多余字节出现 !!)
+ 	- Snapshot: 发布完整的买卖五档行情，如上所示
+	- UpdateLevel: 更新买或卖的某一个档位的 price / size
+ 	- DeleteLevel: 删除某一档位, 之后的档位自动上升。比如删除 3档卖，原 4档变为新3档，原5档变为新4档
+
+   - 具体的数据结构见后
+
+程序:
+   - 输入一个字节流文件名
+	里面的内容如下
+		Snapshot1
+		Snapshot2
+		Snapshot3
+			....
+		SnapshotN
+
+		之后是一系列的 UpdateLevel 和 DeleteLevel 的组合, 比如:
+		Update
+		Update
+		Delete
+		Update
+			.....
+
+
+   	可假设
+	 	- 所有的 Snapshot 都提供了 bid/ask 五层行情，没有空白
+		- 最终的结果也是所有股票都具有 bid/ask 五层行情，没有空白
+
+   - 对于下面给出的数据结构，可以随意变更为C++ class, 只需保证二进制兼容即可。
+
+   - 输出: 打印出汇总后的最后结果，格式可以参考上面的例子，但是各种 format 的输出均可
+          例如对于 600000， 打印出最后的5层价格
+
+struct Snapshot
+{
+	uint8_t msgType = 1;
+	char symbol[6];		// 股票代码，比如 600000
+	double bidPrice[5];	// 买价
+	uint32_t bidSize[5];	// 买数量
+	double askPrice[5];	// 卖价
+	uint32_t askSize[5];	// 卖数量
+};
+
+struct UpdateLevel
+{
+	uint8_t msgType = 2;
+	char symbol[6];
+	uint8_t side;		//  1-Bid   2-Ask
+	uint8_t level; 		//  1 to 5
+	double price;
+	uint32_t size;
+};
+
+struct DeleteLevel
+{
+	uint8_t msgType = 3;
+	char symbol[6];
+	uint8_t side;		//  1-Bid   2-Ask
+	uint8_t level; 		//  1 to 5
+};
+
+ 
+要求：
+1。 使用 C++ 编程，最好是 Linux 环境下，提供 Makefile.  如果不熟悉 Linux 或是 Makefile, 也可使用 MS C++
+2. 可使用 C++98, 或是 C++1x / 1y 语法, 均可
+3. 提供所使用的测试流文件和输出结果
+4. 可假设程序是运行在 64位 PC机上
+5. 提交, 可打包邮件发送，或是百度盘共享, 均可
+
+
